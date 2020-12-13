@@ -29,7 +29,7 @@ class Normalize(Layer):
         Add possibility to have one scale for all features.
     """
     def __init__(self, scale, **kwargs):
-        if K.image_dim_ordering() == 'tf':
+        if K.image_data_format() == 'channels_last':
             self.axis = 3
         else:
             self.axis = 1
@@ -41,7 +41,7 @@ class Normalize(Layer):
         shape = (input_shape[self.axis],)
         init_gamma = self.scale * np.ones(shape)
         self.gamma = K.variable(init_gamma, name='{}_gamma'.format(self.name))
-        self.trainable_weights = [self.gamma]
+        self._trainable_weights = [self.gamma]
 
     def call(self, x, mask=None):
         output = K.l2_normalize(x, self.axis)
@@ -81,7 +81,7 @@ class PriorBox(Layer):
     """
     def __init__(self, img_size, min_size, max_size=None, aspect_ratios=None,
                  flip=True, variances=[0.1], clip=True, **kwargs):
-        if K.image_dim_ordering() == 'tf':
+        if K.image_data_format() == 'channels_last':
             self.waxis = 2
             self.haxis = 1
         else:
@@ -113,7 +113,11 @@ class PriorBox(Layer):
         layer_width = input_shape[self.waxis]
         layer_height = input_shape[self.haxis]
         num_boxes = num_priors_ * layer_width * layer_height
-        return (input_shape[0], num_boxes, 8)
+        return input_shape[0], num_boxes, 8
+
+    # support for Keras 2.0
+    def compute_output_shape(self, input_shape):
+        return self.get_output_shape_for(input_shape)
 
     def call(self, x, mask=None):
         if hasattr(x, '_keras_shape'):
